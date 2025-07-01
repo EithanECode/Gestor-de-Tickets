@@ -605,7 +605,10 @@ class _TicketsSectionState extends State<TicketsSection>
                             alignment: Alignment.centerRight,
                             height: double.infinity,
                             padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: const Icon(Icons.delete, color: Colors.white),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
                           ),
                           onDismissed: (direction) {
                             setState(() {
@@ -614,7 +617,9 @@ class _TicketsSectionState extends State<TicketsSection>
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Text('Ticket eliminado con éxito'),
+                                content: const Text(
+                                  'Ticket eliminado con éxito',
+                                ),
                                 action: SnackBarAction(
                                   label: 'Restaurar',
                                   onPressed: () {
@@ -629,7 +634,10 @@ class _TicketsSectionState extends State<TicketsSection>
                             );
                           },
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
                             leading: SizedBox(
                               width: 44,
                               child: Column(
@@ -642,8 +650,12 @@ class _TicketsSectionState extends State<TicketsSection>
                                   ),
                                   const SizedBox(height: 4),
                                   Icon(
-                                    t['usado'] ? Icons.check_circle : Icons.radio_button_unchecked,
-                                    color: t['usado'] ? Colors.green : Colors.grey,
+                                    t['usado']
+                                        ? Icons.check_circle
+                                        : Icons.radio_button_unchecked,
+                                    color: t['usado']
+                                        ? Colors.green
+                                        : Colors.grey,
                                     size: 18,
                                   ),
                                 ],
@@ -651,7 +663,9 @@ class _TicketsSectionState extends State<TicketsSection>
                             ),
                             title: Text(
                               t['nombre'],
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             subtitle: Row(
                               children: [
