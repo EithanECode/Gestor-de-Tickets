@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:math';
 import 'models/ticket.dart';
 import 'providers/ticket_provider.dart';
 import 'widgets/ticket_card.dart';
@@ -65,8 +66,22 @@ class _TicketsSectionState extends State<TicketsSection>
   }
 
   void _showAddTicketDialog(BuildContext context) {
+    final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
     final TextEditingController nombreController = TextEditingController();
-
+    
+    // Generar código automáticamente
+    String generateCode() {
+      final random = Random();
+      String code;
+      do {
+        code = (10000 + random.nextInt(90000)).toString(); // 10000-99999
+      } while (ticketProvider.tickets.any((ticket) => ticket.nombre == code));
+      return code;
+    }
+    
+    // Establecer código inicial
+    nombreController.text = generateCode();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -77,15 +92,41 @@ class _TicketsSectionState extends State<TicketsSection>
             TextFormField(
               controller: nombreController,
               decoration: const InputDecoration(
-                labelText: 'Nombre del Ticket',
+                labelText: 'Código del Ticket (5 dígitos)',
                 border: OutlineInputBorder(),
+                helperText: 'Ingrese un código de 5 dígitos únicos',
               ),
+              keyboardType: TextInputType.number,
+              maxLength: 5,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Por favor ingrese un nombre';
+                  return 'Por favor ingrese un código';
+                }
+                if (value.length != 5) {
+                  return 'El código debe tener 5 dígitos';
+                }
+                if (!RegExp(r'^\d{5}$').hasMatch(value)) {
+                  return 'Solo se permiten números';
+                }
+                if (ticketProvider.tickets.any((ticket) => ticket.nombre == value)) {
+                  return 'Este código ya existe';
                 }
                 return null;
               },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      nombreController.text = generateCode();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Generar Nuevo Código'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -96,11 +137,10 @@ class _TicketsSectionState extends State<TicketsSection>
           ),
           ElevatedButton(
             onPressed: () {
-              if (nombreController.text.isNotEmpty) {
-                final ticketProvider = Provider.of<TicketProvider>(
-                  context,
-                  listen: false,
-                );
+              if (nombreController.text.isNotEmpty && 
+                  nombreController.text.length == 5 &&
+                  RegExp(r'^\d{5}$').hasMatch(nombreController.text) &&
+                  !ticketProvider.tickets.any((ticket) => ticket.nombre == nombreController.text)) {
                 final newTicket = Ticket(
                   id: 'TICKET-${_uuid.v4().substring(0, 8).toUpperCase()}',
                   nombre: nombreController.text,

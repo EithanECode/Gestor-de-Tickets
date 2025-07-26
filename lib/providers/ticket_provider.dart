@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:math';
 import '../models/ticket.dart';
 
 class TicketProvider extends ChangeNotifier {
@@ -217,13 +218,13 @@ class TicketProvider extends ChangeNotifier {
     final sampleTickets = [
       Ticket(
         id: 'TICKET-001',
-        nombre: 'Ticket Premium 1',
+        nombre: '12345',
         status: TicketStatus.disponible,
         fechaCreacion: DateTime.now().subtract(Duration(days: 1)),
       ),
       Ticket(
         id: 'TICKET-002',
-        nombre: 'Ticket Estándar 1',
+        nombre: '67890',
         status: TicketStatus.enUso,
         fechaCreacion: DateTime.now().subtract(Duration(hours: 2)),
         fechaUso: DateTime.now().subtract(Duration(hours: 1)),
@@ -235,7 +236,7 @@ class TicketProvider extends ChangeNotifier {
       ),
       Ticket(
         id: 'TICKET-003',
-        nombre: 'Ticket Básico 1',
+        nombre: '11111',
         status: TicketStatus.utilizado,
         fechaCreacion: DateTime.now().subtract(Duration(days: 2)),
         fechaUso: DateTime.now().subtract(Duration(days: 1)),
@@ -247,5 +248,15 @@ class TicketProvider extends ChangeNotifier {
 
     _tickets.addAll(sampleTickets);
     notifyListeners();
+  }
+
+  // Generar código único de 5 dígitos
+  String _generateUniqueCode() {
+    final random = Random();
+    String code;
+    do {
+      code = (10000 + random.nextInt(90000)).toString(); // 10000-99999
+    } while (_tickets.any((ticket) => ticket.nombre == code));
+    return code;
   }
 }

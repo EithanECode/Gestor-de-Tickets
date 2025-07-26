@@ -42,9 +42,19 @@ class _TicketStatusDialogState extends State<TicketStatusDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ticket: ${widget.ticket.nombre}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                const Icon(Icons.confirmation_number, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'Código: ${widget.ticket.nombre}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
