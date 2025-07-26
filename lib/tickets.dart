@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'models/ticket.dart';
 import 'providers/ticket_provider.dart';
 import 'widgets/ticket_card.dart';
+import 'widgets/ticket_list_view.dart';
 import 'widgets/ticket_status_dialog.dart';
 
 class TicketsSection extends StatefulWidget {
@@ -17,6 +18,7 @@ class _TicketsSectionState extends State<TicketsSection>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _search = '';
+  bool _isCardView = true; // true = tarjetas, false = lista
   final Uuid _uuid = Uuid();
 
   @override
@@ -192,15 +194,88 @@ class _TicketsSectionState extends State<TicketsSection>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Barra de búsqueda
-                TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar tickets...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  onChanged: (value) => setState(() => _search = value),
+                // Barra de búsqueda y toggle de vista
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          hintText: 'Buscar tickets...',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: (value) => setState(() => _search = value),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Toggle de vista
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Botón vista lista
+                          InkWell(
+                            onTap: () => setState(() => _isCardView = false),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              bottomLeft: Radius.circular(8),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: !_isCardView
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.view_list,
+                                color: !_isCardView
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          // Botón vista tarjetas
+                          InkWell(
+                            onTap: () => setState(() => _isCardView = true),
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(8),
+                              bottomRight: Radius.circular(8),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _isCardView
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.view_module,
+                                color: _isCardView
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
 
@@ -273,7 +348,8 @@ class _TicketsSectionState extends State<TicketsSection>
                             ],
                           ),
                         )
-                      : ListView.builder(
+                      : _isCardView
+                      ? ListView.builder(
                           itemCount: filteredTickets.length,
                           itemBuilder: (context, index) {
                             final ticket = filteredTickets[index];
@@ -285,6 +361,12 @@ class _TicketsSectionState extends State<TicketsSection>
                                   _showStatusDialog(context, ticket),
                             );
                           },
+                        )
+                      : TicketListView(
+                          tickets: filteredTickets,
+                          onEdit: (ticket) =>
+                              _showStatusDialog(context, ticket),
+                          onDelete: (ticket) => _deleteTicket(context, ticket),
                         ),
                 ),
               ],
