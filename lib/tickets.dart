@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:math';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'models/ticket.dart';
 import 'providers/ticket_provider.dart';
 import 'widgets/ticket_card.dart';
 import 'widgets/ticket_list_view.dart';
-import 'widgets/ticket_status_dialog.dart';
 import 'widgets/ticket_edit_dialog.dart';
 
 class TicketsSection extends StatefulWidget {
   const TicketsSection({super.key});
-
   @override
   State<TicketsSection> createState() => _TicketsSectionState();
 }
@@ -22,11 +21,13 @@ class _TicketsSectionState extends State<TicketsSection>
   String _search = '';
   bool _isCardView = true; // true = tarjetas, false = lista
   final Uuid _uuid = Uuid();
+  static const String _viewModeKey = 'tickets_view_mode';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadViewMode();
     // Cargar datos de prueba al inicializar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ticketProvider = Provider.of<TicketProvider>(
@@ -45,42 +46,67 @@ class _TicketsSectionState extends State<TicketsSection>
     super.dispose();
   }
 
-  List<Ticket> _getFilteredTickets(TicketProvider provider) {
-    List<Ticket> filtered = provider.searchTickets(_search);
+  Future<void> _loadViewMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isCardView = prefs.getBool(_viewModeKey) ?? true;
+    setState(() {
+      _isCardView = isCardView;
+    });
+  }
 
+  Future<void> _saveViewMode(bool isCardView) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_viewModeKey, isCardView);
+  }
+
+  void _toggleViewMode(bool isCardView) {
+    setState(() {
+      _isCardView = isCardView;
+    });
+    _saveViewMode(isCardView);
+  }
+
+  List<Ticket> _getFilteredTickets(TicketProvider ticketProvider) {
+    List<Ticket> filteredTickets = ticketProvider.tickets.where((ticket) => !ticket.isDeleted).toList();
+
+    // Filtrar por búsqueda
+    if (_search.isNotEmpty) {
+      filteredTickets = filteredTickets.where((ticket) {
+        return ticket.nombre.toLowerCase().contains(_search.toLowerCase()) ||
+               (ticket.cliente?.toLowerCase().contains(_search.toLowerCase()) ?? false);
+      }).toList();
+    }
+
+    // Filtrar por tab
     switch (_tabController.index) {
       case 0: // Todos
-        return filtered;
+        break;
       case 1: // Disponibles
-        return filtered
-            .where((t) => t.status == TicketStatus.disponible)
-            .toList();
+        filteredTickets = filteredTickets.where((ticket) => ticket.status == TicketStatus.disponible).toList();
+        break;
       case 2: // En Uso
-        return filtered.where((t) => t.status == TicketStatus.enUso).toList();
+        filteredTickets = filteredTickets.where((ticket) => ticket.status == TicketStatus.enUso).toList();
+        break;
       case 3: // Utilizados
-        return filtered
-            .where((t) => t.status == TicketStatus.utilizado)
-            .toList();
-      default:
-        return filtered;
+        filteredTickets = filteredTickets.where((ticket) => ticket.status == TicketStatus.utilizado).toList();
+        break;
     }
+
+    return filteredTickets;
   }
 
   void _showAddTicketDialog(BuildContext context) {
     final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
     final TextEditingController nombreController = TextEditingController();
 
-    // Generar código automáticamente
     String generateCode() {
       final random = Random();
       String code;
       do {
-        code = (10000 + random.nextInt(90000)).toString(); // 10000-99999
+        code = (10000 + random.nextInt(90000)).toString();
       } while (ticketProvider.tickets.any((ticket) => ticket.nombre == code));
       return code;
     }
-
-    // Establecer código inicial
     nombreController.text = generateCode();
 
     showDialog(
@@ -100,20 +126,10 @@ class _TicketsSectionState extends State<TicketsSection>
               keyboardType: TextInputType.number,
               maxLength: 5,
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor ingrese un código';
-                }
-                if (value.length != 5) {
-                  return 'El código debe tener 5 dígitos';
-                }
-                if (!RegExp(r'^\d{5}$').hasMatch(value)) {
-                  return 'Solo se permiten números';
-                }
-                if (ticketProvider.tickets.any(
-                  (ticket) => ticket.nombre == value,
-                )) {
-                  return 'Este código ya existe';
-                }
+                if (value == null || value.isEmpty) return 'Por favor ingrese un código';
+                if (value.length != 5) return 'El código debe tener 5 dígitos';
+                if (!RegExp(r'^\d{5}$').hasMatch(value)) return 'Solo se permiten números';
+                if (ticketProvider.tickets.any((ticket) => ticket.nombre == value)) return 'Este código ya existe';
                 return null;
               },
             ),
@@ -122,9 +138,7 @@ class _TicketsSectionState extends State<TicketsSection>
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      nombreController.text = generateCode();
-                    },
+                    onPressed: () { nombreController.text = generateCode(); },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Generar Nuevo Código'),
                   ),
@@ -143,13 +157,10 @@ class _TicketsSectionState extends State<TicketsSection>
               if (nombreController.text.isNotEmpty &&
                   nombreController.text.length == 5 &&
                   RegExp(r'^\d{5}$').hasMatch(nombreController.text) &&
-                  !ticketProvider.tickets.any(
-                    (ticket) => ticket.nombre == nombreController.text,
-                  )) {
+                  !ticketProvider.tickets.any((ticket) => ticket.nombre == nombreController.text)) {
                 final newTicket = Ticket(
                   id: 'TICKET-${_uuid.v4().substring(0, 8).toUpperCase()}',
-                  nombre:
-                      nombreController.text, // Este será el código de 5 dígitos
+                  nombre: nombreController.text,
                   status: TicketStatus.disponible,
                   fechaCreacion: DateTime.now(),
                 );
@@ -169,66 +180,46 @@ class _TicketsSectionState extends State<TicketsSection>
       context: context,
       builder: (context) => TicketEditDialog(ticket: ticket),
     );
-
     if (result != null) {
-      final ticketProvider = Provider.of<TicketProvider>(
-        context,
-        listen: false,
-      );
+      final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
       await ticketProvider.updateTicket(result);
     }
   }
 
-  void _deleteTicket(BuildContext context, Ticket ticket) {
-    showDialog(
+  void _deleteTicket(BuildContext context, Ticket ticket) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Eliminar Ticket'),
-        content: Text(
-          '¿Está seguro de que desea eliminar el ticket "${ticket.nombre}"?',
-        ),
+        title: const Text('Confirmar eliminación'),
+        content: Text('¿Estás seguro de que quieres eliminar el ticket ${ticket.nombre}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () {
-              final ticketProvider = Provider.of<TicketProvider>(
-                context,
-                listen: false,
-              );
-              ticketProvider.deleteTicket(ticket.id);
-              Navigator.of(context).pop();
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Ticket eliminado'),
-                  action: SnackBarAction(
-                    label: 'Deshacer',
-                    onPressed: () {
-                      ticketProvider.restoreTicket(ticket.id);
-                    },
-                  ),
-                ),
-              );
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Eliminar'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
+      await ticketProvider.deleteTicket(ticket.id);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-
+    
     return Consumer<TicketProvider>(
       builder: (context, ticketProvider, child) {
         final filteredTickets = _getFilteredTickets(ticketProvider);
-
+        
         return Scaffold(
           backgroundColor: Colors.transparent,
           floatingActionButton: FloatingActionButton(
@@ -264,9 +255,8 @@ class _TicketsSectionState extends State<TicketsSection>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Botón vista lista
                           InkWell(
-                            onTap: () => setState(() => _isCardView = false),
+                            onTap: () => _toggleViewMode(false),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(8),
                               bottomLeft: Radius.circular(8),
@@ -274,9 +264,7 @@ class _TicketsSectionState extends State<TicketsSection>
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: !_isCardView
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.transparent,
+                                color: !_isCardView ? Theme.of(context).primaryColor : Colors.transparent,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(8),
                                   bottomLeft: Radius.circular(8),
@@ -284,16 +272,13 @@ class _TicketsSectionState extends State<TicketsSection>
                               ),
                               child: Icon(
                                 Icons.view_list,
-                                color: !_isCardView
-                                    ? Colors.white
-                                    : Colors.grey[600],
+                                color: !_isCardView ? Colors.white : Colors.grey[600],
                                 size: 20,
                               ),
                             ),
                           ),
-                          // Botón vista tarjetas
                           InkWell(
-                            onTap: () => setState(() => _isCardView = true),
+                            onTap: () => _toggleViewMode(true),
                             borderRadius: const BorderRadius.only(
                               topRight: Radius.circular(8),
                               bottomRight: Radius.circular(8),
@@ -301,9 +286,7 @@ class _TicketsSectionState extends State<TicketsSection>
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: _isCardView
-                                    ? Theme.of(context).primaryColor
-                                    : Colors.transparent,
+                                color: _isCardView ? Theme.of(context).primaryColor : Colors.transparent,
                                 borderRadius: const BorderRadius.only(
                                   topRight: Radius.circular(8),
                                   bottomRight: Radius.circular(8),
@@ -311,9 +294,7 @@ class _TicketsSectionState extends State<TicketsSection>
                               ),
                               child: Icon(
                                 Icons.view_module,
-                                color: _isCardView
-                                    ? Colors.white
-                                    : Colors.grey[600],
+                                color: _isCardView ? Colors.white : Colors.grey[600],
                                 size: 20,
                               ),
                             ),
@@ -324,8 +305,8 @@ class _TicketsSectionState extends State<TicketsSection>
                   ],
                 ),
                 const SizedBox(height: 24),
-
-                // Tabs de filtros
+                
+                // Tabs
                 TabBar(
                   controller: _tabController,
                   labelColor: Theme.of(context).primaryColor,
@@ -340,14 +321,13 @@ class _TicketsSectionState extends State<TicketsSection>
                   onTap: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 16),
-
-                // Indicador de estado
+                
+                // Loading y error states
                 if (ticketProvider.isLoading)
                   const Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Center(child: CircularProgressIndicator()),
                   ),
-
                 if (ticketProvider.error.isNotEmpty)
                   Container(
                     width: double.infinity,
@@ -370,7 +350,7 @@ class _TicketsSectionState extends State<TicketsSection>
                       ],
                     ),
                   ),
-
+                
                 // Lista de tickets
                 Expanded(
                   child: filteredTickets.isEmpty
@@ -378,38 +358,28 @@ class _TicketsSectionState extends State<TicketsSection>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.confirmation_number,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
+                              Icon(Icons.confirmation_number, size: 64, color: Colors.grey),
                               SizedBox(height: 16),
-                              Text(
-                                'No hay tickets',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                ),
-                              ),
+                              Text('No hay tickets', style: TextStyle(fontSize: 18, color: Colors.grey)),
                             ],
                           ),
                         )
                       : _isCardView
-                      ? ListView.builder(
-                          itemCount: filteredTickets.length,
-                          itemBuilder: (context, index) {
-                            final ticket = filteredTickets[index];
-                            return TicketCard(
-                              ticket: ticket,
-                              onTap: () => _showEditDialog(context, ticket),
-                              onDelete: () => _deleteTicket(context, ticket),
-                            );
-                          },
-                        )
-                      : TicketListView(
-                          tickets: filteredTickets,
-                          onDelete: (ticket) => _deleteTicket(context, ticket),
-                        ),
+                          ? ListView.builder(
+                              itemCount: filteredTickets.length,
+                              itemBuilder: (context, index) {
+                                final ticket = filteredTickets[index];
+                                return TicketCard(
+                                  ticket: ticket,
+                                  onTap: () => _showEditDialog(context, ticket),
+                                  onDelete: () => _deleteTicket(context, ticket),
+                                );
+                              },
+                            )
+                          : TicketListView(
+                              tickets: filteredTickets,
+                              onDelete: (ticket) => _deleteTicket(context, ticket),
+                            ),
                 ),
               ],
             ),
