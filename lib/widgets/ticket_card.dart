@@ -219,31 +219,20 @@ class TicketCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (onStatusChange != null) ...[
-          TextButton.icon(
-            onPressed: onStatusChange,
-            icon: const Icon(Icons.edit, size: 16),
-            label: const Text('Cambiar Estado'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).primaryColor,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        if (onDelete != null)
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete, size: 20),
-            color: Colors.red,
-            tooltip: 'Eliminar ticket',
-          ),
-      ],
-    );
-  }
+           Widget _buildActions(BuildContext context) {
+           return Row(
+             mainAxisAlignment: MainAxisAlignment.end,
+             children: [
+               if (onDelete != null)
+                 IconButton(
+                   onPressed: onDelete,
+                   icon: const Icon(Icons.delete, size: 20),
+                   color: Colors.red,
+                   tooltip: 'Eliminar ticket',
+                 ),
+             ],
+           );
+         }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
