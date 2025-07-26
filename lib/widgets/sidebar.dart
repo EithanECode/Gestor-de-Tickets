@@ -45,7 +45,7 @@ class Sidebar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SidebarIcon(
-                    icon: Icons.dashboard,
+                    icon: Icons.devices,
                     selected: selectedIndex == 0,
                     onTap: () => onIndexChanged(0),
                   ),
