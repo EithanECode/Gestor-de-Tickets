@@ -56,10 +56,10 @@ class TicketListView extends StatelessWidget {
           onDismissed: (direction) => onDelete(ticket),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: _getStatusColor(ticket.status).withOpacity(0.1),
+              backgroundColor: Colors.blue.withOpacity(0.1),
               child: FaIcon(
                 FontAwesomeIcons.ticket,
-                color: _getStatusColor(ticket.status),
+                color: Colors.blue,
                 size: 20,
               ),
             ),
@@ -70,11 +70,41 @@ class TicketListView extends StatelessWidget {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Creado: ${_formatDate(ticket.fechaCreacion)}'),
-                if (ticket.cliente != null && ticket.cliente!.isNotEmpty)
-                  Text('Cliente: ${ticket.cliente}'),
-                if (ticket.fechaUso != null)
-                  Text('Usado: ${_formatDate(ticket.fechaUso!)}'),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Text('Creado: ${_formatDate(ticket.fechaCreacion)}'),
+                  ],
+                ),
+                if (ticket.cliente != null && ticket.cliente!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text('Cliente: ${ticket.cliente}'),
+                    ],
+                  ),
+                ],
+                if (ticket.fechaUso != null) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text('Usado: ${_formatDate(ticket.fechaUso!)}'),
+                    ],
+                  ),
+                ],
               ],
             ),
             trailing: Row(
@@ -88,28 +118,19 @@ class TicketListView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Los estados no se pueden modificar manualmente
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'Solo lectura',
-                    style: TextStyle(fontSize: 10, color: Colors.grey),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 // Botón de imprimir
                 IconButton(
                   onPressed: () => _printTicket(context, ticket),
                   icon: const Icon(Icons.print, size: 18),
                   color: Colors.blue,
                   tooltip: 'Imprimir ticket',
+                ),
+                // Botón de eliminar
+                IconButton(
+                  onPressed: () => onDelete(ticket),
+                  icon: const Icon(Icons.delete, size: 18),
+                  color: Colors.red,
+                  tooltip: 'Eliminar ticket',
                 ),
               ],
             ),
