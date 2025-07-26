@@ -114,9 +114,9 @@ class TicketCard extends StatelessWidget {
   }
 
   Widget _buildStatusChip(BuildContext context) {
-    Color color;
-    String text;
-    IconData icon;
+    late Color color;
+    late String text;
+    late IconData icon;
 
     switch (ticket.status) {
       case TicketStatus.disponible:

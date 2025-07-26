@@ -3,15 +3,11 @@ import 'package:provider/provider.dart';
 import 'login_mikroitk.dart';
 import 'screens/dashboard_screen.dart';
 import 'providers/theme_provider.dart';
-import 'providers/ticket_provider.dart';
 
 void main() {
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => TicketProvider()),
-      ],
+    ChangeNotifierProvider(
+      create: (context) => ThemeProvider(),
       child: const MyApp(),
     ),
   );
