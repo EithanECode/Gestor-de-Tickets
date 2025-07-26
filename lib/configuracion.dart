@@ -11,6 +11,8 @@ class ConfiguracionSection extends StatefulWidget {
 }
 
 class _ConfiguracionSectionState extends State<ConfiguracionSection> {
+  bool _autoStart = true; // Por defecto activado
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
@@ -130,39 +132,21 @@ class _ConfiguracionSectionState extends State<ConfiguracionSection> {
                           size: 24,
                         ),
                         const SizedBox(width: 16),
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey[400]!,
-                              width: 2,
-                            ),
+                        Checkbox(
+                          value: _autoStart,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _autoStart = value ?? false;
+                            });
+                          },
+                          activeColor: const Color(0xFF2196F3),
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 8),
                         const Text(
                           'Abrir al iniciar el sistema',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Configuración de notificaciones
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.notifications_active,
-                          color: const Color(0xFF2196F3),
-                          size: 24,
-                        ),
-                        const SizedBox(width: 16),
-                        const Text(
-                          'Notificarme al alcanzar cuota de datos',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
