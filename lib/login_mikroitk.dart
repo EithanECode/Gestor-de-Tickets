@@ -20,9 +20,11 @@ class _MikrotikConfigScreenState extends State<MikrotikConfigScreen> {
     super.initState();
     // Simulación de escaneo
     Future.delayed(const Duration(seconds: 3), () {
-      setState(() {
-        _isScanning = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+        });
+      }
     });
   }
 

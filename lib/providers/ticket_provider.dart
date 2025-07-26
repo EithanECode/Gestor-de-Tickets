@@ -213,42 +213,42 @@ class TicketProvider extends ChangeNotifier {
     _setError('');
   }
 
-  // Generar datos de prueba
-  void generateSampleData() {
-    final sampleTickets = [
-      Ticket(
-        id: 'TICKET-001',
-        nombre: '12345',
-        status: TicketStatus.disponible,
-        fechaCreacion: DateTime.now().subtract(Duration(days: 1)),
-      ),
-      Ticket(
-        id: 'TICKET-002',
-        nombre: '67890',
-        status: TicketStatus.enUso,
-        fechaCreacion: DateTime.now().subtract(Duration(hours: 2)),
-        fechaUso: DateTime.now().subtract(Duration(hours: 1)),
-        cliente: 'Juan Pérez',
-        dispositivoMac: '00:1B:44:11:3A:B7',
-        dispositivoIp: '192.168.1.100',
-        datosConsumidos: 1.5,
-        tiempoUso: Duration(hours: 1, minutes: 30),
-      ),
-      Ticket(
-        id: 'TICKET-003',
-        nombre: '11111',
-        status: TicketStatus.utilizado,
-        fechaCreacion: DateTime.now().subtract(Duration(days: 2)),
-        fechaUso: DateTime.now().subtract(Duration(days: 1)),
-        cliente: 'María García',
-        datosConsumidos: 2.3,
-        tiempoUso: Duration(hours: 2, minutes: 15),
-      ),
-    ];
+           // Generar datos de prueba
+         void generateSampleData() {
+           final sampleTickets = [
+             Ticket(
+               id: 'TICKET-001',
+               nombre: '12345', // Código de 5 dígitos
+               status: TicketStatus.disponible,
+               fechaCreacion: DateTime.now().subtract(Duration(days: 1)),
+             ),
+             Ticket(
+               id: 'TICKET-002',
+               nombre: '67890', // Código de 5 dígitos
+               status: TicketStatus.enUso,
+               fechaCreacion: DateTime.now().subtract(Duration(hours: 2)),
+               fechaUso: DateTime.now().subtract(Duration(hours: 1)),
+               cliente: 'Juan Pérez',
+               dispositivoMac: '00:1B:44:11:3A:B7',
+               dispositivoIp: '192.168.1.100',
+               datosConsumidos: 1.5,
+               tiempoUso: Duration(hours: 1, minutes: 30),
+             ),
+             Ticket(
+               id: 'TICKET-003',
+               nombre: '11111', // Código de 5 dígitos
+               status: TicketStatus.utilizado,
+               fechaCreacion: DateTime.now().subtract(Duration(days: 2)),
+               fechaUso: DateTime.now().subtract(Duration(days: 1)),
+               cliente: 'María García',
+               datosConsumidos: 2.3,
+               tiempoUso: Duration(hours: 2, minutes: 15),
+             ),
+           ];
 
-    _tickets.addAll(sampleTickets);
-    notifyListeners();
-  }
+           _tickets.addAll(sampleTickets);
+           notifyListeners();
+         }
 
   // Generar código único de 5 dígitos
   String _generateUniqueCode() {

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/ticket.dart';
+import '../services/ticket_print_service.dart';
 
 class TicketListView extends StatelessWidget {
   final List<Ticket> tickets;
-  final Function(Ticket) onEdit;
   final Function(Ticket) onDelete;
 
   const TicketListView({
     super.key,
     required this.tickets,
-    required this.onEdit,
     required this.onDelete,
   });
 
@@ -18,41 +17,50 @@ class TicketListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       itemCount: tickets.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final ticket = tickets[index];
         return Dismissible(
-          key: ValueKey(ticket.id),
+          key: Key(ticket.id),
           direction: DismissDirection.endToStart,
           background: Container(
             color: Colors.red,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.only(right: 20),
             child: const Icon(Icons.delete, color: Colors.white),
           ),
-          onDismissed: (direction) => onDelete(ticket),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
-            leading: SizedBox(
-              width: 44,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FaIcon(
-                    FontAwesomeIcons.ticket,
-                    color: Theme.of(context).primaryColor,
-                    size: 22,
+          confirmDismiss: (direction) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Confirmar eliminación'),
+                content: Text(
+                  '¿Estás seguro de que quieres eliminar el ticket ${ticket.nombre}?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancelar'),
                   ),
-                  const SizedBox(height: 4),
-                  Icon(
-                    _getStatusIcon(ticket.status),
-                    color: _getStatusColor(ticket.status),
-                    size: 18,
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text('Eliminar'),
                   ),
                 ],
+              ),
+            );
+          },
+          onDismissed: (direction) => onDelete(ticket),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getStatusColor(ticket.status).withOpacity(0.1),
+              child: FaIcon(
+                FontAwesomeIcons.ticket,
+                color: _getStatusColor(ticket.status),
+                size: 20,
               ),
             ),
             title: Text(
@@ -62,27 +70,11 @@ class TicketListView extends StatelessWidget {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text('Fecha: ${_formatDate(ticket.fechaCreacion)}'),
-                  ],
-                ),
-                if (ticket.cliente != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text('Cliente: ${ticket.cliente}'),
-                    ],
-                  ),
-                ],
+                Text('Creado: ${_formatDate(ticket.fechaCreacion)}'),
+                if (ticket.cliente != null && ticket.cliente!.isNotEmpty)
+                  Text('Cliente: ${ticket.cliente}'),
+                if (ticket.fechaUso != null)
+                  Text('Usado: ${_formatDate(ticket.fechaUso!)}'),
               ],
             ),
             trailing: Row(
@@ -96,10 +88,28 @@ class TicketListView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Los estados no se pueden modificar manualmente
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Solo lectura',
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Botón de imprimir
                 IconButton(
-                  onPressed: () => onEdit(ticket),
-                  icon: const Icon(Icons.edit, size: 20),
-                  tooltip: 'Editar ticket',
+                  onPressed: () => _printTicket(context, ticket),
+                  icon: const Icon(Icons.print, size: 18),
+                  color: Colors.blue,
+                  tooltip: 'Imprimir ticket',
                 ),
               ],
             ),
@@ -109,29 +119,18 @@ class TicketListView extends StatelessWidget {
     );
   }
 
-  IconData _getStatusIcon(TicketStatus status) {
-    switch (status) {
-      case TicketStatus.disponible:
-        return Icons.check_circle;
-      case TicketStatus.enUso:
-        return Icons.play_circle;
-      case TicketStatus.utilizado:
-        return Icons.done_all;
-      case TicketStatus.anulado:
-        return Icons.cancel;
-    }
-  }
-
-  Color _getStatusColor(TicketStatus status) {
-    switch (status) {
-      case TicketStatus.disponible:
-        return Colors.green;
-      case TicketStatus.enUso:
-        return Colors.orange;
-      case TicketStatus.utilizado:
-        return Colors.blue;
-      case TicketStatus.anulado:
-        return Colors.red;
+  Future<void> _printTicket(BuildContext context, Ticket ticket) async {
+    try {
+      await TicketPrintService.printTicket(ticket);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al imprimir: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -148,7 +147,20 @@ class TicketListView extends StatelessWidget {
     }
   }
 
+  Color _getStatusColor(TicketStatus status) {
+    switch (status) {
+      case TicketStatus.disponible:
+        return Colors.green;
+      case TicketStatus.enUso:
+        return Colors.orange;
+      case TicketStatus.utilizado:
+        return Colors.grey;
+      case TicketStatus.anulado:
+        return Colors.red;
+    }
+  }
+
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

@@ -9,7 +9,7 @@ class EstadisticasSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<TicketProvider>(
       builder: (context, ticketProvider, child) {
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

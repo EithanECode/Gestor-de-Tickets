@@ -1,35 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/ticket.dart';
+import '../services/ticket_print_service.dart';
 
 class TicketCard extends StatelessWidget {
   final Ticket ticket;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
-  final VoidCallback? onStatusChange;
 
   const TicketCard({
     super.key,
     required this.ticket,
     this.onTap,
     this.onDelete,
-    this.onStatusChange,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: EdgeInsets.all(isMobile ? 16 : 20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -46,7 +43,7 @@ class TicketCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          ticket.id,
+                          ticket.nombre,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -59,43 +56,49 @@ class TicketCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Nombre del ticket
-              Text(
-                ticket.nombre,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
               const SizedBox(height: 8),
 
-              // Información del cliente (si existe)
-              if (ticket.cliente != null) ...[
+              // Información del ticket
+              if (ticket.cliente != null && ticket.cliente!.isNotEmpty) ...[
                 Row(
                   children: [
                     Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Cliente: ${ticket.cliente}',
-                      style: TextStyle(color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cliente: ${ticket.cliente}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
               ],
 
-              // Fechas
               Row(
                 children: [
                   Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 8),
                   Text(
                     'Creado: ${_formatDate(ticket.fechaCreacion)}',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   ),
                 ],
               ),
+
+              if (ticket.fechaUso != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Usado: ${_formatDate(ticket.fechaUso!)}',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                  ],
+                ),
+              ],
 
               // Información adicional si está en uso
               if (ticket.status == TicketStatus.enUso) ...[
@@ -103,65 +106,13 @@ class TicketCard extends StatelessWidget {
                 _buildUsageInfo(context),
               ],
 
-              // Acciones
               const SizedBox(height: 12),
+
+              // Acciones
               _buildActions(context),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(BuildContext context) {
-    late Color color;
-    late String text;
-    late IconData icon;
-
-    switch (ticket.status) {
-      case TicketStatus.disponible:
-        color = Colors.green;
-        text = 'Disponible';
-        icon = Icons.check_circle;
-        break;
-      case TicketStatus.enUso:
-        color = Colors.orange;
-        text = 'En Uso';
-        icon = Icons.play_circle;
-        break;
-      case TicketStatus.utilizado:
-        color = Colors.blue;
-        text = 'Utilizado';
-        icon = Icons.done_all;
-        break;
-      case TicketStatus.anulado:
-        color = Colors.red;
-        text = 'Anulado';
-        icon = Icons.cancel;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -219,23 +170,86 @@ class TicketCard extends StatelessWidget {
     );
   }
 
-           Widget _buildActions(BuildContext context) {
-           return Row(
-             mainAxisAlignment: MainAxisAlignment.end,
-             children: [
-               if (onDelete != null)
-                 IconButton(
-                   onPressed: onDelete,
-                   icon: const Icon(Icons.delete, size: 20),
-                   color: Colors.red,
-                   tooltip: 'Eliminar ticket',
-                 ),
-             ],
-           );
-         }
+  Widget _buildActions(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        // Botón de imprimir
+        IconButton(
+          onPressed: () => _printTicket(context),
+          icon: const Icon(Icons.print, size: 20),
+          color: Colors.blue,
+          tooltip: 'Imprimir ticket',
+        ),
+        if (onDelete != null)
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete, size: 20),
+            color: Colors.red,
+            tooltip: 'Eliminar ticket',
+          ),
+      ],
+    );
+  }
+
+  Future<void> _printTicket(BuildContext context) async {
+    try {
+      await TicketPrintService.printTicket(ticket);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al imprimir: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildStatusChip(BuildContext context) {
+    Color color;
+    String text;
+
+    switch (ticket.status) {
+      case TicketStatus.disponible:
+        color = Colors.green;
+        text = 'Disponible';
+        break;
+      case TicketStatus.enUso:
+        color = Colors.orange;
+        text = 'En Uso';
+        break;
+      case TicketStatus.utilizado:
+        color = Colors.grey;
+        text = 'Utilizado';
+        break;
+      case TicketStatus.anulado:
+        color = Colors.red;
+        text = 'Anulado';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatDuration(Duration duration) {

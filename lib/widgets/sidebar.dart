@@ -74,10 +74,26 @@ class Sidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0),
               child: Center(
-                child: SidebarIcon(
-                  icon: Icons.logout,
-                  selected: false,
-                  onTap: onLogout,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: onLogout,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.ease,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      width: 48,
+                      height: 48,
+                      child: const Icon(
+                        Icons.logout,
+                        color: Colors.red,
+                        size: 24,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

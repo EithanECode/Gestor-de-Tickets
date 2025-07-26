@@ -7,6 +7,7 @@ import 'providers/ticket_provider.dart';
 import 'widgets/ticket_card.dart';
 import 'widgets/ticket_list_view.dart';
 import 'widgets/ticket_status_dialog.dart';
+import 'widgets/ticket_edit_dialog.dart';
 
 class TicketsSection extends StatefulWidget {
   const TicketsSection({super.key});
@@ -68,7 +69,7 @@ class _TicketsSectionState extends State<TicketsSection>
   void _showAddTicketDialog(BuildContext context) {
     final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
     final TextEditingController nombreController = TextEditingController();
-    
+
     // Generar código automáticamente
     String generateCode() {
       final random = Random();
@@ -78,10 +79,10 @@ class _TicketsSectionState extends State<TicketsSection>
       } while (ticketProvider.tickets.any((ticket) => ticket.nombre == code));
       return code;
     }
-    
+
     // Establecer código inicial
     nombreController.text = generateCode();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -108,7 +109,9 @@ class _TicketsSectionState extends State<TicketsSection>
                 if (!RegExp(r'^\d{5}$').hasMatch(value)) {
                   return 'Solo se permiten números';
                 }
-                if (ticketProvider.tickets.any((ticket) => ticket.nombre == value)) {
+                if (ticketProvider.tickets.any(
+                  (ticket) => ticket.nombre == value,
+                )) {
                   return 'Este código ya existe';
                 }
                 return null;
@@ -137,13 +140,16 @@ class _TicketsSectionState extends State<TicketsSection>
           ),
           ElevatedButton(
             onPressed: () {
-              if (nombreController.text.isNotEmpty && 
+              if (nombreController.text.isNotEmpty &&
                   nombreController.text.length == 5 &&
                   RegExp(r'^\d{5}$').hasMatch(nombreController.text) &&
-                  !ticketProvider.tickets.any((ticket) => ticket.nombre == nombreController.text)) {
+                  !ticketProvider.tickets.any(
+                    (ticket) => ticket.nombre == nombreController.text,
+                  )) {
                 final newTicket = Ticket(
                   id: 'TICKET-${_uuid.v4().substring(0, 8).toUpperCase()}',
-                  nombre: nombreController.text,
+                  nombre:
+                      nombreController.text, // Este será el código de 5 dígitos
                   status: TicketStatus.disponible,
                   fechaCreacion: DateTime.now(),
                 );
@@ -158,10 +164,10 @@ class _TicketsSectionState extends State<TicketsSection>
     );
   }
 
-  void _showStatusDialog(BuildContext context, Ticket ticket) async {
+  void _showEditDialog(BuildContext context, Ticket ticket) async {
     final result = await showDialog<Ticket>(
       context: context,
-      builder: (context) => TicketStatusDialog(ticket: ticket),
+      builder: (context) => TicketEditDialog(ticket: ticket),
     );
 
     if (result != null) {
@@ -395,17 +401,13 @@ class _TicketsSectionState extends State<TicketsSection>
                             final ticket = filteredTickets[index];
                             return TicketCard(
                               ticket: ticket,
-                              onTap: () => _showStatusDialog(context, ticket),
+                              onTap: () => _showEditDialog(context, ticket),
                               onDelete: () => _deleteTicket(context, ticket),
-                              onStatusChange: () =>
-                                  _showStatusDialog(context, ticket),
                             );
                           },
                         )
                       : TicketListView(
                           tickets: filteredTickets,
-                          onEdit: (ticket) =>
-                              _showStatusDialog(context, ticket),
                           onDelete: (ticket) => _deleteTicket(context, ticket),
                         ),
                 ),
