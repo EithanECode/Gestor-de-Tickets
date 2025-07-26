@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import 'models/ticket.dart';
+import 'providers/ticket_provider.dart';
+import 'widgets/ticket_card.dart';
+import 'widgets/ticket_status_dialog.dart';
 
 class TicketsSection extends StatefulWidget {
   @override
@@ -10,21 +15,22 @@ class _TicketsSectionState extends State<TicketsSection>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _search = '';
-
-  final List<Map<String, dynamic>> _allTickets = [
-    {'nombre': 'Ticket 1', 'usado': false, 'fecha': '2024-06-01'},
-    {'nombre': 'Ticket 2', 'usado': true, 'fecha': '2024-06-01'},
-    {'nombre': 'Ticket 3', 'usado': false, 'fecha': '2024-06-02'},
-    {'nombre': 'Ticket 4', 'usado': true, 'fecha': '2024-06-02'},
-    {'nombre': 'Ticket 5', 'usado': false, 'fecha': '2024-06-03'},
-  ];
-
-  List<Map<String, dynamic>> _deletedTickets = [];
+  final Uuid _uuid = Uuid();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    // Cargar datos de prueba al inicializar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ticketProvider = Provider.of<TicketProvider>(
+        context,
+        listen: false,
+      );
+      if (ticketProvider.tickets.isEmpty) {
+        ticketProvider.generateSampleData();
+      }
+    });
   }
 
   @override
@@ -33,167 +39,257 @@ class _TicketsSectionState extends State<TicketsSection>
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _filteredTickets {
-    List<Map<String, dynamic>> filtered = _allTickets
-        .where((t) => t['nombre'].toLowerCase().contains(_search.toLowerCase()))
-        .toList();
-    if (_tabController.index == 1) {
-      filtered = filtered.where((t) => t['usado'] == true).toList();
-    } else if (_tabController.index == 2) {
-      filtered = filtered.where((t) => t['usado'] == false).toList();
+  List<Ticket> _getFilteredTickets(TicketProvider provider) {
+    List<Ticket> filtered = provider.searchTickets(_search);
+
+    switch (_tabController.index) {
+      case 0: // Todos
+        return filtered;
+      case 1: // Disponibles
+        return filtered
+            .where((t) => t.status == TicketStatus.disponible)
+            .toList();
+      case 2: // En Uso
+        return filtered.where((t) => t.status == TicketStatus.enUso).toList();
+      case 3: // Utilizados
+        return filtered
+            .where((t) => t.status == TicketStatus.utilizado)
+            .toList();
+      default:
+        return filtered;
     }
-    return filtered;
+  }
+
+  void _showAddTicketDialog(BuildContext context) {
+    final TextEditingController nombreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Agregar Nuevo Ticket'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: nombreController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del Ticket',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Por favor ingrese un nombre';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nombreController.text.isNotEmpty) {
+                final ticketProvider = Provider.of<TicketProvider>(
+                  context,
+                  listen: false,
+                );
+                final newTicket = Ticket(
+                  id: 'TICKET-${_uuid.v4().substring(0, 8).toUpperCase()}',
+                  nombre: nombreController.text,
+                  status: TicketStatus.disponible,
+                  fechaCreacion: DateTime.now(),
+                );
+                ticketProvider.addTicket(newTicket);
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Agregar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStatusDialog(BuildContext context, Ticket ticket) async {
+    final result = await showDialog<Ticket>(
+      context: context,
+      builder: (context) => TicketStatusDialog(ticket: ticket),
+    );
+
+    if (result != null) {
+      final ticketProvider = Provider.of<TicketProvider>(
+        context,
+        listen: false,
+      );
+      await ticketProvider.updateTicket(result);
+    }
+  }
+
+  void _deleteTicket(BuildContext context, Ticket ticket) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar Ticket'),
+        content: Text(
+          '¿Está seguro de que desea eliminar el ticket "${ticket.nombre}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final ticketProvider = Provider.of<TicketProvider>(
+                context,
+                listen: false,
+              );
+              ticketProvider.deleteTicket(ticket.id);
+              Navigator.of(context).pop();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Ticket eliminado'),
+                  action: SnackBarAction(
+                    label: 'Deshacer',
+                    onPressed: () {
+                      ticketProvider.restoreTicket(ticket.id);
+                    },
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(isMobile ? 8 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+
+    return Consumer<TicketProvider>(
+      builder: (context, ticketProvider, child) {
+        final filteredTickets = _getFilteredTickets(ticketProvider);
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showAddTicketDialog(context),
+            child: const Icon(Icons.add),
+          ),
+          body: Padding(
+            padding: EdgeInsets.all(isMobile ? 8 : 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Botón eliminado, solo campo de búsqueda
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Buscar por nombre...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (value) => setState(() => _search = value),
+                // Barra de búsqueda
+                TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar tickets...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  onChanged: (value) => setState(() => _search = value),
+                ),
+                const SizedBox(height: 24),
+
+                // Tabs de filtros
+                TabBar(
+                  controller: _tabController,
+                  labelColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: Theme.of(context).primaryColor,
+                  tabs: const [
+                    Tab(text: 'Todos'),
+                    Tab(text: 'Disponibles'),
+                    Tab(text: 'En Uso'),
+                    Tab(text: 'Utilizados'),
+                  ],
+                  onTap: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+
+                // Indicador de estado
+                if (ticketProvider.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+
+                if (ticketProvider.error.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(ticketProvider.error)),
+                        IconButton(
+                          onPressed: () => ticketProvider.clearError(),
+                          icon: const Icon(Icons.close, size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Lista de tickets
+                Expanded(
+                  child: filteredTickets.isEmpty
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.confirmation_number,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay tickets',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredTickets.length,
+                          itemBuilder: (context, index) {
+                            final ticket = filteredTickets[index];
+                            return TicketCard(
+                              ticket: ticket,
+                              onTap: () => _showStatusDialog(context, ticket),
+                              onDelete: () => _deleteTicket(context, ticket),
+                              onStatusChange: () =>
+                                  _showStatusDialog(context, ticket),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            TabBar(
-              controller: _tabController,
-              labelColor: Theme.of(context).primaryColor,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Theme.of(context).primaryColor,
-              tabs: const [
-                Tab(text: 'Todos'),
-                Tab(text: 'Usados'),
-                Tab(text: 'No usados'),
-              ],
-              onTap: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _filteredTickets.isEmpty
-                  ? const Center(child: Text('No hay tickets'))
-                  : ListView.separated(
-                      itemCount: _filteredTickets.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final t = _filteredTickets[i];
-                        final ticketIndex = _allTickets.indexOf(t);
-                        return Dismissible(
-                          key: ValueKey(t['nombre'] + t['fecha'].toString()),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            height: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            setState(() {
-                              _deletedTickets.add(t);
-                              _allTickets.removeAt(ticketIndex);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                  'Ticket eliminado con éxito',
-                                ),
-                                action: SnackBarAction(
-                                  label: 'Restaurar',
-                                  onPressed: () {
-                                    if (!mounted) return;
-                                    setState(() {
-                                      _allTickets.insert(ticketIndex, t);
-                                      _deletedTickets.remove(t);
-                                    });
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 4,
-                            ),
-                            leading: SizedBox(
-                              width: 44,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  FaIcon(
-                                    FontAwesomeIcons.ticket,
-                                    color: Theme.of(context).primaryColor,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Icon(
-                                    t['usado']
-                                        ? Icons.check_circle
-                                        : Icons.radio_button_unchecked,
-                                    color: t['usado']
-                                        ? Colors.green
-                                        : Colors.grey,
-                                    size: 18,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            title: Text(
-                              t['nombre'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 16,
-                                  color: Colors.grey[600],
-                                ),
-                                const SizedBox(width: 4),
-                                Text('Fecha: ${t['fecha']}'),
-                              ],
-                            ),
-                            trailing: Text(
-                              t['usado'] ? 'Usado' : 'No usado',
-                              style: TextStyle(
-                                color: t['usado'] ? Colors.green : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
