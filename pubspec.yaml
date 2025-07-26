@@ -43,6 +43,7 @@ dependencies:
   printing: ^5.11.1
   pdf: ^3.10.7
   qr_flutter: ^4.1.0
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:
