@@ -176,17 +176,22 @@ class _TicketsSectionState extends State<TicketsSection>
   }
 
   void _showEditDialog(BuildContext context, Ticket ticket) async {
+    final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
     final result = await showDialog<Ticket>(
       context: context,
       builder: (context) => TicketEditDialog(ticket: ticket),
     );
+
+    if (!mounted) return;
+
     if (result != null) {
-      final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
       await ticketProvider.updateTicket(result);
     }
   }
 
   void _deleteTicket(BuildContext context, Ticket ticket) async {
+    final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -206,8 +211,9 @@ class _TicketsSectionState extends State<TicketsSection>
       ),
     );
 
+    if (!mounted) return;
+
     if (confirmed == true) {
-      final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
       await ticketProvider.deleteTicket(ticket.id);
     }
   }

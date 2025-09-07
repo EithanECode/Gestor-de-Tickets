@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 enum TicketStatus { disponible, enUso, utilizado, anulado }
 
 class Ticket {

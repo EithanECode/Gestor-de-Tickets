@@ -3,8 +3,8 @@ import 'dart:math';
 import '../models/ticket.dart';
 
 class TicketProvider extends ChangeNotifier {
-  List<Ticket> _tickets = [];
-  List<Ticket> _deletedTickets = [];
+  final List<Ticket> _tickets = [];
+  final List<Ticket> _deletedTickets = [];
   bool _isLoading = false;
   String _error = '';
   bool _isOnline = true;
@@ -251,6 +251,7 @@ class TicketProvider extends ChangeNotifier {
          }
 
   // Generar código único de 5 dígitos
+  // ignore: unused_element
   String _generateUniqueCode() {
     final random = Random();
     String code;

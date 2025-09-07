@@ -17,20 +17,24 @@ class _ConfiguracionSectionState extends State<ConfiguracionSection> {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        return Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: Text(
-                  'Configuración',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Contenedor principal
-              Container(
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(32.0, 32.0, 32.0, 32.0 + MediaQuery.of(context).viewPadding.bottom),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Configuración',
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // Contenedor principal
+                    Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -295,11 +299,14 @@ class _ConfiguracionSectionState extends State<ConfiguracionSection> {
                       ],
                     ),
                   ],
-                ),
-              ),
-            ],
-          ),
-        );
+                ), // inner Column (child of Container)
+              ), // Container
+                  ],
+                ), // outer Column (inside ConstrainedBox)
+              ), // ConstrainedBox
+            ), // Center
+          ), // SingleChildScrollView
+        ); // SafeArea
       },
     );
   }

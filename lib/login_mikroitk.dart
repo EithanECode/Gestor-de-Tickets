@@ -144,7 +144,12 @@ class _MikrotikConfigScreenState extends State<MikrotikConfigScreen> {
                                   children: const [
                                     CircularProgressIndicator(strokeWidth: 2),
                                     SizedBox(width: 12),
-                                    Text('Buscando dispositivos Mikrotik...'),
+                                    Expanded(
+                                      child: Text(
+                                        'Buscando dispositivos Mikrotik...',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   ],
                                 )
                               : const Text('Dispositivo Mikrotik encontrado.'),
