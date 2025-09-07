@@ -238,89 +238,102 @@ class _TicketsSectionState extends State<TicketsSection>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Selection mode AppBar replacement
-                if (ticketProvider.isSelectionMode)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            // Cancel selection
-                            ticketProvider.clearSelection();
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text('${ticketProvider.selectedCount} seleccionados', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        IconButton(
-                          onPressed: ticketProvider.selectedCount > 0
-                              ? () async {
-                                  final selected = ticketProvider.selectedIds;
-                                  final tickets = ticketProvider.tickets.where((t) => selected.contains(t.id)).map((t) => t.nombre).join('\n');
-                                  await SharePlus.instance.share(ShareParams(text: tickets));
-                                  if (!mounted) return;
-                                  ticketProvider.clearSelection();
-                                }
-                              : null,
-                          icon: const Icon(Icons.share),
-                          tooltip: 'Compartir',
-                        ),
-                        IconButton(
-                          onPressed: ticketProvider.selectedCount > 0
-                              ? () async {
-                                  final confirmed = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Eliminar tickets seleccionados'),
-                                      content: Text('¿Eliminar ${ticketProvider.selectedCount} tickets? Esta acción se puede deshacer.'),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-                                        ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text('Eliminar')),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirmed == true) {
-                                    final selected = ticketProvider.selectedIds.toList();
-                                    // perform deletions
-                                    for (final id in selected) {
-                                      await ticketProvider.deleteTicket(id);
-                                    }
+                // Selection mode AppBar replacement with animated appearance
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, anim) {
+                      final offsetAnim = Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(anim);
+                      return FadeTransition(opacity: anim, child: SlideTransition(position: offsetAnim, child: child));
+                    },
+                    child: ticketProvider.isSelectionMode
+                        ? Container(
+                            key: const ValueKey('selection_header'),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () {
+                                    // Cancel selection
                                     ticketProvider.clearSelection();
-                                    if (!mounted) return;
-                                    final count = selected.length;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('$count tickets eliminados'),
-                                        action: SnackBarAction(
-                                          label: 'Deshacer',
-                                          onPressed: () async {
-                                            // restore deleted tickets
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text('${ticketProvider.selectedCount} seleccionados', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                                IconButton(
+                                  onPressed: ticketProvider.selectedCount > 0
+                                      ? () async {
+                                          final selected = ticketProvider.selectedIds;
+                                          final tickets = ticketProvider.tickets.where((t) => selected.contains(t.id)).map((t) => t.nombre).join('\n');
+                                          await SharePlus.instance.share(ShareParams(text: tickets));
+                                          if (!mounted) return;
+                                          ticketProvider.clearSelection();
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.share),
+                                  tooltip: 'Compartir',
+                                ),
+                                IconButton(
+                                  onPressed: ticketProvider.selectedCount > 0
+                                      ? () async {
+                                          final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text('Eliminar tickets seleccionados'),
+                                              content: Text('¿Eliminar ${ticketProvider.selectedCount} tickets? Esta acción se puede deshacer.'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+                                                ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text('Eliminar')),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirmed == true) {
+                                            final selected = ticketProvider.selectedIds.toList();
                                             for (final id in selected) {
-                                              await ticketProvider.restoreTicket(id);
+                                              await ticketProvider.deleteTicket(id);
                                             }
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              : null,
-                          icon: const Icon(Icons.delete),
-                          color: Colors.red,
-                          tooltip: 'Eliminar',
-                        ),
-                      ],
-                    ),
+                                            ticketProvider.clearSelection();
+                                            if (!mounted) return;
+                                            final count = selected.length;
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('$count tickets eliminados'),
+                                                action: SnackBarAction(
+                                                  label: 'Deshacer',
+                                                  onPressed: () async {
+                                                    for (final id in selected) {
+                                                      await ticketProvider.restoreTicket(id);
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.delete),
+                                  color: Colors.red,
+                                  tooltip: 'Eliminar',
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
-                if (ticketProvider.isSelectionMode) const SizedBox(height: 12),
+                ),
                 // Barra de búsqueda y toggle de vista
                 Row(
                   children: [
