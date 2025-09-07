@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/ticket.dart';
 import '../services/ticket_print_service.dart';
 
@@ -212,6 +215,25 @@ class TicketCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        // Share button: on mobile open share sheet, on desktop/web copy to clipboard
+        IconButton(
+          onPressed: () async {
+            try {
+              final isMobile = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+              if (isMobile) {
+                await SharePlus.instance.share(ShareParams(text: ticket.nombre));
+              } else {
+                await Clipboard.setData(ClipboardData(text: ticket.nombre));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Número copiado al portapapeles')));
+              }
+            } catch (e) {
+              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al compartir: $e')));
+            }
+          },
+          icon: const Icon(Icons.share, size: 20),
+          color: Colors.black87,
+          tooltip: 'Compartir',
+        ),
         // Botón de imprimir
         IconButton(
           onPressed: () => _printTicket(context),

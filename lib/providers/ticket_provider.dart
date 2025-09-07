@@ -11,7 +11,7 @@ class TicketProvider extends ChangeNotifier {
   bool _isLoading = false;
   String _error = '';
   bool _isOnline = true;
-  int _targetAvailableCount = 0;
+  int _targetAvailableCount = 1;
   // Selection mode state
   final Set<String> _selectedIds = <String>{};
   bool _selectionMode = false;
@@ -176,7 +176,7 @@ class TicketProvider extends ChangeNotifier {
   Future<void> _loadFromLocal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _targetAvailableCount = prefs.getInt(_kTargetAvailableKey) ?? 0;
+  _targetAvailableCount = prefs.getInt(_kTargetAvailableKey) ?? 1;
       // TODO: load tickets if persisted
       notifyListeners();
     } catch (e) {
