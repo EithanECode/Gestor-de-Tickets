@@ -7,12 +7,18 @@ class TicketCard extends StatelessWidget {
   final Ticket ticket;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onLongPress;
+  final bool isSelected;
+  final VoidCallback? onSelectToggle;
 
   const TicketCard({
     super.key,
     required this.ticket,
     this.onTap,
     this.onDelete,
+    this.onLongPress,
+    this.isSelected = false,
+    this.onSelectToggle,
   });
 
   @override
@@ -24,12 +30,25 @@ class TicketCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Stack(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Theme.of(context).primaryColor.withOpacity(0.06)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: isSelected
+                    ? Border.all(color: Theme.of(context).primaryColor.withOpacity(0.9))
+                    : Border.all(color: Colors.transparent),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Header con ID y estado
               Row(
                 children: [
@@ -42,11 +61,13 @@ class TicketCard extends StatelessWidget {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          ticket.nombre,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        Expanded(
+                          child: Text(
+                            ticket.nombre,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -108,10 +129,27 @@ class TicketCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Acciones
-              _buildActions(context),
-            ],
-          ),
+                  // Acciones
+                  _buildActions(context),
+                ],
+              ),
+            ),
+            // Fixed check badge in corner when selected
+            if (isSelected)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)],
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: const Icon(Icons.check, color: Colors.white, size: 16),
+                ),
+              ),
+          ],
         ),
       ),
     );

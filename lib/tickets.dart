@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:math';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models/ticket.dart';
 import 'providers/ticket_provider.dart';
@@ -237,6 +238,89 @@ class _TicketsSectionState extends State<TicketsSection>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Selection mode AppBar replacement
+                if (ticketProvider.isSelectionMode)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            // Cancel selection
+                            ticketProvider.clearSelection();
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('${ticketProvider.selectedCount} seleccionados', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        IconButton(
+                          onPressed: ticketProvider.selectedCount > 0
+                              ? () async {
+                                  final selected = ticketProvider.selectedIds;
+                                  final tickets = ticketProvider.tickets.where((t) => selected.contains(t.id)).map((t) => t.nombre).join('\n');
+                                  await SharePlus.instance.share(ShareParams(text: tickets));
+                                  if (!mounted) return;
+                                  ticketProvider.clearSelection();
+                                }
+                              : null,
+                          icon: const Icon(Icons.share),
+                          tooltip: 'Compartir',
+                        ),
+                        IconButton(
+                          onPressed: ticketProvider.selectedCount > 0
+                              ? () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Eliminar tickets seleccionados'),
+                                      content: Text('¿Eliminar ${ticketProvider.selectedCount} tickets? Esta acción se puede deshacer.'),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
+                                        ElevatedButton(onPressed: () => Navigator.of(context).pop(true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text('Eliminar')),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirmed == true) {
+                                    final selected = ticketProvider.selectedIds.toList();
+                                    // perform deletions
+                                    for (final id in selected) {
+                                      await ticketProvider.deleteTicket(id);
+                                    }
+                                    ticketProvider.clearSelection();
+                                    if (!mounted) return;
+                                    final count = selected.length;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('$count tickets eliminados'),
+                                        action: SnackBarAction(
+                                          label: 'Deshacer',
+                                          onPressed: () async {
+                                            // restore deleted tickets
+                                            for (final id in selected) {
+                                              await ticketProvider.restoreTicket(id);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              : null,
+                          icon: const Icon(Icons.delete),
+                          color: Colors.red,
+                          tooltip: 'Eliminar',
+                        ),
+                      ],
+                    ),
+                  ),
+                if (ticketProvider.isSelectionMode) const SizedBox(height: 12),
                 // Barra de búsqueda y toggle de vista
                 Row(
                   children: [
@@ -252,6 +336,7 @@ class _TicketsSectionState extends State<TicketsSection>
                       ),
                     ),
                     const SizedBox(width: 12),
+                        // ... existing code ...
                     // Toggle de vista
                     Container(
                       decoration: BoxDecoration(
@@ -377,14 +462,32 @@ class _TicketsSectionState extends State<TicketsSection>
                                 final ticket = filteredTickets[index];
                                 return TicketCard(
                                   ticket: ticket,
-                                  onTap: () => _showEditDialog(context, ticket),
+                                  onTap: () {
+                                    if (ticketProvider.isSelectionMode) {
+                                      ticketProvider.toggleSelection(ticket.id);
+                                    } else {
+                                      _showEditDialog(context, ticket);
+                                    }
+                                  },
+                                  onLongPress: () => ticketProvider.enterSelectionMode(ticket.id),
                                   onDelete: () => _deleteTicket(context, ticket),
+                                  isSelected: ticketProvider.selectedIds.contains(ticket.id),
+                                  onSelectToggle: () => ticketProvider.toggleSelection(ticket.id),
                                 );
                               },
                             )
                           : TicketListView(
                               tickets: filteredTickets,
                               onDelete: (ticket) => _deleteTicket(context, ticket),
+                              onTap: (ticket) {
+                                if (ticketProvider.isSelectionMode) {
+                                  ticketProvider.toggleSelection(ticket.id);
+                                } else {
+                                  _showEditDialog(context, ticket);
+                                }
+                              },
+                              onLongPress: (ticket) => ticketProvider.enterSelectionMode(ticket.id),
+                              selectedIds: ticketProvider.selectedIds,
                             ),
                 ),
               ],

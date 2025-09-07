@@ -6,11 +6,17 @@ import '../services/ticket_print_service.dart';
 class TicketListView extends StatelessWidget {
   final List<Ticket> tickets;
   final Function(Ticket) onDelete;
+  final void Function(Ticket)? onTap;
+  final void Function(Ticket)? onLongPress;
+  final Set<String>? selectedIds;
 
   const TicketListView({
     super.key,
     required this.tickets,
     required this.onDelete,
+    this.onTap,
+    this.onLongPress,
+    this.selectedIds,
   });
 
   @override
@@ -63,6 +69,8 @@ class TicketListView extends StatelessWidget {
                 size: 20,
               ),
             ),
+            onTap: onTap != null ? () => onTap!(ticket) : null,
+            onLongPress: onLongPress != null ? () => onLongPress!(ticket) : null,
             title: Text(
               ticket.nombre,
               style: const TextStyle(fontWeight: FontWeight.bold),

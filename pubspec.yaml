@@ -44,6 +44,7 @@ dependencies:
   pdf: ^3.10.7
   qr_flutter: ^4.1.0
   fl_chart: ^0.66.0
+  share_plus: ^11.1.0
 
 dev_dependencies:
   flutter_test:

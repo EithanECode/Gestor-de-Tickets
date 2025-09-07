@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/ticket_provider.dart';
 import 'theme/app_theme.dart';
 
 class ConfiguracionSection extends StatefulWidget {
@@ -157,6 +158,40 @@ class _ConfiguracionSectionState extends State<ConfiguracionSection> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Reponer hasta X tickets (configuración)
+                    Builder(
+                      builder: (context) {
+                        final provider = Provider.of<TicketProvider>(context);
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.restore,
+                              color: const Color(0xFF2196F3),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Reponer hasta:',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            DropdownButton<int>(
+                              value: provider.targetAvailableCount,
+                              items: List.generate(21, (i) => i)
+                                  .map((v) => DropdownMenuItem(value: v, child: Text(v.toString())))
+                                  .toList(),
+                              onChanged: (v) {
+                                if (v != null) provider.setTargetAvailableCount(v);
+                              },
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 32),
                     // Sección Datos

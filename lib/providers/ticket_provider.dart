@@ -1,17 +1,32 @@
 import 'package:flutter/foundation.dart';
 import 'dart:math';
+import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ticket.dart';
 
 class TicketProvider extends ChangeNotifier {
   final List<Ticket> _tickets = [];
   final List<Ticket> _deletedTickets = [];
+  final Uuid _uuid = Uuid();
   bool _isLoading = false;
   String _error = '';
   bool _isOnline = true;
+  int _targetAvailableCount = 0;
+  // Selection mode state
+  final Set<String> _selectedIds = <String>{};
+  bool _selectionMode = false;
+
+  // Preference key
+  static const String _kTargetAvailableKey = 'target_available_count';
 
   // Getters
   List<Ticket> get tickets => _tickets.where((t) => !t.isDeleted).toList();
+  int get targetAvailableCount => _targetAvailableCount;
   List<Ticket> get deletedTickets => _deletedTickets;
+  // Selection getters
+  bool get isSelectionMode => _selectionMode;
+  int get selectedCount => _selectedIds.length;
+  Set<String> get selectedIds => Set.unmodifiable(_selectedIds);
   bool get isLoading => _isLoading;
   String get error => _error;
   bool get isOnline => _isOnline;
@@ -51,6 +66,8 @@ class TicketProvider extends ChangeNotifier {
       await _saveToLocal();
       await _syncToCloud();
       _setError('');
+  // Ensure available tickets if configured
+  await ensureAvailable();
     } catch (e) {
       _setError('Error al agregar ticket: $e');
     } finally {
@@ -67,6 +84,7 @@ class TicketProvider extends ChangeNotifier {
         await _saveToLocal();
         await _syncToCloud();
         _setError('');
+  await ensureAvailable();
       }
     } catch (e) {
       _setError('Error al actualizar ticket: $e');
@@ -88,6 +106,7 @@ class TicketProvider extends ChangeNotifier {
         await _saveToLocal();
         await _syncToCloud();
         _setError('');
+  await ensureAvailable();
       }
     } catch (e) {
       _setError('Error al eliminar ticket: $e');
@@ -109,6 +128,7 @@ class TicketProvider extends ChangeNotifier {
         await _saveToLocal();
         await _syncToCloud();
         _setError('');
+  await ensureAvailable();
       }
     } catch (e) {
       _setError('Error al restaurar ticket: $e');
@@ -133,6 +153,7 @@ class TicketProvider extends ChangeNotifier {
 
       await updateTicket(updatedTicket);
       _setError('');
+  await ensureAvailable();
     } catch (e) {
       _setError('Error al cambiar estado del ticket: $e');
     } finally {
@@ -142,8 +163,25 @@ class TicketProvider extends ChangeNotifier {
 
   // Sincronización
   Future<void> _saveToLocal() async {
-    // TODO: Implementar persistencia local con SharedPreferences o Hive
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_kTargetAvailableKey, _targetAvailableCount);
+      // TODO: persist tickets if desired
+    } catch (e) {
+      // ignore write errors for now
+    }
     notifyListeners();
+  }
+
+  Future<void> _loadFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _targetAvailableCount = prefs.getInt(_kTargetAvailableKey) ?? 0;
+      // TODO: load tickets if persisted
+      notifyListeners();
+    } catch (e) {
+      // ignore
+    }
   }
 
   Future<void> _syncToCloud() async {
@@ -165,6 +203,7 @@ class TicketProvider extends ChangeNotifier {
       _setLoading(true);
       // TODO: Cargar desde persistencia local
       await Future.delayed(Duration(milliseconds: 1000)); // Simulación
+  await _loadFromLocal();
       _setError('');
     } catch (e) {
       _setError('Error al cargar tickets: $e');
@@ -206,6 +245,39 @@ class TicketProvider extends ChangeNotifier {
     if (online) {
       syncFromCloud();
     }
+    notifyListeners();
+  }
+
+  // Selection mode methods
+  void enterSelectionMode(String id) {
+    _selectionMode = true;
+    _selectedIds.clear();
+    _selectedIds.add(id);
+    notifyListeners();
+  }
+
+  void toggleSelection(String id) {
+    if (_selectedIds.contains(id)) {
+      _selectedIds.remove(id);
+      if (_selectedIds.isEmpty) _selectionMode = false;
+    } else {
+      _selectedIds.add(id);
+      _selectionMode = true;
+    }
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedIds.clear();
+    _selectionMode = false;
+    notifyListeners();
+  }
+
+  // Set the target available tickets count and persist
+  Future<void> setTargetAvailableCount(int count) async {
+    _targetAvailableCount = count;
+    await _saveToLocal();
+    await ensureAvailable();
     notifyListeners();
   }
 
@@ -259,5 +331,25 @@ class TicketProvider extends ChangeNotifier {
       code = (10000 + random.nextInt(90000)).toString(); // 10000-99999
     } while (_tickets.any((ticket) => ticket.nombre == code));
     return code;
+  }
+
+  // Ensure there are at least _targetAvailableCount available tickets
+  Future<void> ensureAvailable() async {
+    if (_targetAvailableCount <= 0) return;
+    final available = getTicketsByStatus(TicketStatus.disponible).length;
+    final toCreate = _targetAvailableCount - available;
+    if (toCreate <= 0) return;
+
+    for (var i = 0; i < toCreate; i++) {
+      final newTicket = Ticket(
+        id: 'TICKET-${_uuid.v4().substring(0, 8).toUpperCase()}',
+        nombre: _generateUniqueCode(),
+        status: TicketStatus.disponible,
+        fechaCreacion: DateTime.now(),
+      );
+      _tickets.add(newTicket);
+    }
+    await _saveToLocal();
+    notifyListeners();
   }
 }
